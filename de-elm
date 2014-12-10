@@ -226,10 +226,6 @@ sub elm_extract_markdown {
     join '', @o
 }
 
-sub de_elm;
-
-
-
 sub de_elm {
     my ($loc)=@_;
     compose (\&xprint,
