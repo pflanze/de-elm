@@ -85,6 +85,7 @@ sub loc_content {
 
 sub markdown_wrap_page ($) {
     my ($title)=@_;
+    $title=~ s|<|&lt;|sg;
     sub {
 	my ($content)=@_;
 	(qq{
