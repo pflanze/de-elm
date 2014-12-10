@@ -1,0 +1,87 @@
+#!/usr/bin/perl -w
+
+(my $email='ch%christianjaeger,ch')=~ tr/%,/@./;
+
+use strict; use warnings FATAL => 'uninitialized';
+
+$0=~ /(.*?)([^\/]+)\z/s or die "?";
+my ($mydir, $myname)=($1,$2);
+sub usage {
+    print STDERR map{"$_\n"} @_ if @_;
+    print "$myname saved-elm-page.html
+
+  write markdown from that page to stdout. Run md2html on that if you
+  like.
+
+  (Christian Jaeger <$email>)
+";
+exit (@_ ? 1 : 0);
+}
+
+use Getopt::Long;
+GetOptions("help"=> sub{usage},
+	   ) or exit 1;
+usage unless @ARGV;
+
+
+#library stuff
+
+sub file_content {
+    my ($path)=@_;
+    open my $in, "<", $path
+      or die "$path: $!";
+    my $cnt= do { local $/; \ <$in> };
+    close $in
+      or die "$path: $!";
+    $cnt
+}
+
+sub string_print {
+    my ($ref)=@_;
+    print $$ref
+      or die $!;
+}
+
+sub compose {
+    my (@fn)= reverse @_;
+    sub {
+	my (@v)= @_;
+	for (@fn) {
+	    @v= &$_(@v);
+	}
+	wantarray ? @v : $v[-1]
+    }
+}
+
+#/lib
+
+
+sub elm_extract_markdown {
+    my ($ref)=@_;
+    my $cnt= $$ref;
+    $cnt=~ s/.*\$Markdown\.toElement\(\"//s
+      or die "no markdown found";
+    my @c= split //, $cnt;
+    my @o;
+  lp: {
+	while (@c) {
+	    my $c= shift @c;
+	    last lp if $c eq '"';
+	    push @o, $c eq '\\' ? do {
+		@c or die "eof reached before end of escape sequence";
+		my $c2= shift @c;
+		$c2 eq 'n' ? "\n" : $c2
+	    } : $c;
+	}
+	die "eof reached before end of string";
+    }
+    \ join '', @o
+}
+
+sub de_elm;
+
+*de_elm= compose \&string_print, \&elm_extract_markdown, \&file_content;
+
+de_elm $_
+  for @ARGV;
+
