@@ -10,8 +10,11 @@ sub usage {
     print STDERR map{"$_\n"} @_ if @_;
     print "$myname saved-elm-page.html
 
-  write markdown from that page to stdout. Run md2html on that if you
-  like.
+  write markdown from that page to stdout.
+
+  Options:
+
+    --html  transform the extracted markdown to HTML
 
   (Christian Jaeger <$email>)
 ";
@@ -19,7 +22,9 @@ exit (@_ ? 1 : 0);
 }
 
 use Getopt::Long;
+our $opt_html;
 GetOptions("help"=> sub{usage},
+	   "html"=> \$opt_html,
 	   ) or exit 1;
 usage unless @ARGV;
 
@@ -33,12 +38,11 @@ sub file_content {
     my $cnt= do { local $/; \ <$in> };
     close $in
       or die "$path: $!";
-    $cnt
+    $$cnt
 }
 
-sub string_print {
-    my ($ref)=@_;
-    print $$ref
+sub xprint {
+    print @_
       or die $!;
 }
 
@@ -55,10 +59,132 @@ sub compose {
 
 #/lib
 
+# Markdown
+
+sub markdown_wrap_page ($) {
+    my ($title)=@_;
+    sub {
+	my ($content)=@_;
+	(qq{
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtm
+l1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"><head><title>}
+       .$title
+       .qq{
+</title><style type="text/css">
+<!--
+ul.menu {
+  border: 1px solid #000;
+  background-color: #eee;
+  padding: 5px;
+  list-style: none;
+  padding-left: 0.5em;
+}
+li.menu {
+  border-right: 1px solid #000;
+  list-style: none;
+  padding-left: 0.5em;
+  padding-right: 0.3em;
+  display: inline;
+}
+li.menu_last {
+  list-style: none;
+  padding-left: 0.5em;
+  padding-right: 0.3em;
+  display: inline;
+}
+.menu_selected {
+  font-weight: bold;
+}
+
+a {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+pre {
+  padding: 4px;
+  background-color: #eee;
+  border: 1px solid #ccc;
+}
+
+* > code {
+  padding: 1px;
+  background-color: #eee;
+  border: 1px solid #ddd;
+}
+
+pre > code {
+  padding: 0px;
+  background-color: none;
+  border: none;
+}
+
+
+.header {
+  text-align: center;
+}
+.logo {
+  font-weight: bold;
+  font-size:36px;
+}
+
+body {
+  padding-left: 1.8em;
+  padding-right: 1.8em;
+}
+
+hr {
+  height: 1px;
+  background-color: #ccc;
+  border: none;
+}
+
+.footer_date {
+  text-align: center;
+  font-style: italic;
+  font-size: small;
+}
+
+.costlist {
+  border-spacing: 4px;
+}
+.costlist > thead > th {
+  border-bottom: 1px solid #666;
+}
+.costlist > tr > td {
+  padding-right: 0.5em;
+}
+
+blockquote {
+  padding: 1px;
+  background-color: #eee;
+  border: 1px solid #ddd;
+}
+-->
+</style></head><body>
+}
+	 .$content
+	 .qq{
+</body></html>
+})
+    }
+}
+
+sub markdown {
+    my ($str)=@_;
+    require Text::Markdown;
+    Text::Markdown::markdown($str)
+}
+
+
+# Main
 
 sub elm_extract_markdown {
-    my ($ref)=@_;
-    my $cnt= $$ref;
+    my ($cnt)=@_;
     $cnt=~ s/.*\$Markdown\.toElement\(\"//s
       or die "no markdown found";
     my @c= split //, $cnt;
@@ -75,12 +201,21 @@ sub elm_extract_markdown {
 	}
 	die "eof reached before end of string";
     }
-    \ join '', @o
+    join '', @o
 }
 
 sub de_elm;
 
-*de_elm= compose \&string_print, \&elm_extract_markdown, \&file_content;
+
+
+sub de_elm {
+    my ($loc)=@_;
+    compose (\&xprint,
+	     $opt_html ? (markdown_wrap_page("de-elm $loc"), \&markdown) : (),
+	     \&elm_extract_markdown,
+	     \&file_content)
+      ->($loc);
+}
 
 de_elm $_
   for @ARGV;
