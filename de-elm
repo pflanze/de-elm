@@ -17,7 +17,9 @@ sub usage {
 
   Options:
 
-    --html  transform the extracted markdown to HTML
+    --html  transform the extracted markdown to HTML.
+            NOTE: the used markdown formatter does not handle
+            language declarations for code blocks (e.g. ```haskell).
 
   (Christian Jaeger <$email>)
 ";
