@@ -8,7 +8,7 @@ $0=~ /(.*?)([^\/]+)\z/s or die "?";
 my ($mydir, $myname)=($1,$2);
 sub usage {
     print STDERR map{"$_\n"} @_ if @_;
-    print "$myname saved-elm-page.html
+    print "$myname saved-elm-page.html|http://elm-lang.org/
 
   write markdown from that page to stdout.
 
@@ -57,7 +57,26 @@ sub compose {
     }
 }
 
-#/lib
+# Web-fetch
+
+sub http_content {
+    my ($loc)=@_;
+    open my $in, "-|", "wget", "-O", "-", "--", $loc
+      or die "wget: $!";
+    my $cnt= do { local $/; \ <$in> };
+    close $in
+      or $? or die "wget '$loc': $!";
+    $? == 0
+      or die "wget '$loc' exited with code $?";
+    $$cnt
+}
+
+
+sub loc_content {
+    my ($loc)=@_;
+    $loc=~ /^https?:/i ? http_content $loc : file_content $loc
+}
+
 
 # Markdown
 
@@ -213,7 +232,7 @@ sub de_elm {
     compose (\&xprint,
 	     $opt_html ? (markdown_wrap_page("de-elm $loc"), \&markdown) : (),
 	     \&elm_extract_markdown,
-	     \&file_content)
+	     \&loc_content)
       ->($loc);
 }
 
