@@ -207,14 +207,15 @@ sub markdown {
 
 sub elm_extract_markdown {
     my ($cnt)=@_;
-    $cnt=~ s/.*\$Markdown\.toElement\(\"//s
+    $cnt=~ s/.*(?:\$Markdown\.toElement\(|var _user\$project\$Main\$rest = )(['"])//s
       or die "no markdown found";
+    my $quote= $1;
     my @c= split //, $cnt;
     my @o;
   lp: {
 	while (@c) {
 	    my $c= shift @c;
-	    last lp if $c eq '"';
+	    last lp if $c eq $quote;
 	    push @o, $c eq '\\' ? do {
 		@c or die "eof reached before end of escape sequence";
 		my $c2= shift @c;
