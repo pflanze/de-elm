@@ -205,10 +205,10 @@ sub markdown {
 
 # Main
 
-sub elm_extract_markdown {
-    my ($cnt)=@_;
-    $cnt=~ s/.*(?:\$Markdown\.toElement\(|var _user\$project\$Main\$rest = )(['"])//s
-      or die "no markdown found";
+sub perhaps_elm_extract_markdown {
+    my ($cnt, $startmarker)=@_;
+    $cnt=~ s/.*$startmarker(['"])//s
+      or return ();
     my $quote= $1;
     my @c= split //, $cnt;
     my @o;
@@ -226,6 +226,19 @@ sub elm_extract_markdown {
     }
     join '', @o
 }
+
+sub elm_extract_markdown {
+    my ($cnt)= @_;
+    my @parts= map { perhaps_elm_extract_markdown $cnt, $_ }
+      (qr/\$Markdown\.toElement\(/,
+       qr/var _user\$project\$Main\$start *= */,
+       qr/var _user\$project\$Main\$middle *= */,
+       qr/var _user\$project\$Main\$rest *= */,
+      );
+    @parts or die "no markdown found";
+    join("\n<hr/>\n", @parts)
+}
+
 
 sub de_elm {
     my ($loc)=@_;
